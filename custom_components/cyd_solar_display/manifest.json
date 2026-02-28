@@ -5,7 +5,7 @@
   "issue_tracker": "https://github.com/https://github.com/openkairo/Solar_Display_openkairo/issues",
   "dependencies": [],
   "codeowners": [
-    "@low-streaming"
+    "@openkairo"
   ],
   "requirements": [
     "aiohttp"

@@ -1,0 +1,38 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "CYD Solar Display Connection",
+                "description": "Enter the IP address of your CYD display.",
+                "data": {
+                    "host": "IP Address or Hostname",
+                    "port": "Port (Default 80)"
+                }
+            }
+        },
+        "error": {
+            "invalid_host": "Invalid hostname or IP."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Display Configuration",
+                "description": "Select the entities to be shown on the display.",
+                "data": {
+                    "solar_entity": "Solar Production (W)",
+                    "grid_entity": "Grid Import/Export (W)",
+                    "house_entity": "House Consumption (W)",
+                    "battery_entity": "Battery Power (W)",
+                    "battery_soc_entity": "Battery Level (%)",
+                    "yield_today_entity": "Yield Today (kWh)",
+                    "grid_import_entity": "Grid Import Today (kWh)",
+                    "grid_export_entity": "Grid Export Today (kWh)",
+                    "update_interval": "Update Interval (seconds)",
+                    "auto_page_switch": "Auto Page Switch",
+                    "page_interval": "Switch Interval (seconds)"
+                }
+            }
+        }
+    }
+}

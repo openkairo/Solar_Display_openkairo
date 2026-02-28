@@ -1,0 +1,16 @@
+{
+  "domain": "cyd_solar_display",
+  "name": "CYD Solar Display",
+  "documentation": "https://github.com/low-streaming/cyd_solar_display",
+  "issue_tracker": "https://github.com/low-streaming/cyd_solar_display/issues",
+  "dependencies": [],
+  "codeowners": [
+    "@low-streaming"
+  ],
+  "requirements": [
+    "aiohttp"
+  ],
+  "version": "1.0.0",
+  "iot_class": "local_push",
+  "config_flow": true
+}

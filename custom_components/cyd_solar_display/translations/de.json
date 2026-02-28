@@ -1,0 +1,38 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "CYD Solar Display Verbindung",
+                "description": "Gib die IP-Adresse deines CYD Displays ein.",
+                "data": {
+                    "host": "IP-Adresse oder Hostname",
+                    "port": "Port (Standard 80)"
+                }
+            }
+        },
+        "error": {
+            "invalid_host": "Ungültiger Hostname oder IP."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Display Konfiguration",
+                "description": "Wähle die Entitäten aus, die auf dem Display angezeigt werden sollen.",
+                "data": {
+                    "solar_entity": "Solar Erzeugung (W)",
+                    "grid_entity": "Netz Einspeisung/Bezug (W)",
+                    "house_entity": "Hausverbrauch (W)",
+                    "battery_entity": "Batterie Leistung (W)",
+                    "battery_soc_entity": "Batterie Ladestand (%)",
+                    "yield_today_entity": "Ertrag Heute (kWh)",
+                    "grid_import_entity": "Netz Bezug Heute (kWh)",
+                    "grid_export_entity": "Netz Einspeisung Heute (kWh)",
+                    "update_interval": "Sende-Intervall (Sekunden)",
+                    "auto_page_switch": "Automatischer Seitenwechsel",
+                    "page_interval": "Wechsel-Intervall (Sekunden)"
+                }
+            }
+        }
+    }
+}

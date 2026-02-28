@@ -1,0 +1,10 @@
+{
+    "name": "CYD Solar Display",
+    "content_type": "integration",
+    "domains": [
+        "cyd_solar_display"
+    ],
+    "homeassistant": "2023.4.0",
+    "render_readme": true,
+    "iot_class": "local_push"
+}

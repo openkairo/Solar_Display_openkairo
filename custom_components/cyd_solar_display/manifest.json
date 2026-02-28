@@ -1,8 +1,8 @@
 {
   "domain": "cyd_solar_display",
   "name": "CYD Solar Display",
-  "documentation": "https://github.com/low-streaming/cyd_solar_display",
-  "issue_tracker": "https://github.com/low-streaming/cyd_solar_display/issues",
+  "documentation": "https://github.com/https://github.com/openkairo/Solar_Display_openkairo",
+  "issue_tracker": "https://github.com/https://github.com/openkairo/Solar_Display_openkairo/issues",
   "dependencies": [],
   "codeowners": [
     "@low-streaming"

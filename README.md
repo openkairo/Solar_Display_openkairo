@@ -140,6 +140,11 @@ Home Assistant  ──(ESPHome Native API)──►  ESP32 CYD
 
 ## 📋 Changelog
 
+### v1.1.0 — 2026-02-28 🔧 Repository Transfer
+- 🔁 Repository zu [openkairo/Solar_Display_openkairo](https://github.com/openkairo/Solar_Display_openkairo) umgezogen
+- ✅ Code Owner auf @openkairo aktualisiert
+- ✅ Alle internen Links und Badges auf das neue Repository angepasst
+
 ### v1.0.0 — 2026-02-28 🎉 Initial Release
 - ✅ Live Energiefluss-Dashboard (Solar, Batterie, Haus, Netz)
 - ✅ Ertrags-Statistiken (Tag, Monat, Jahr, Gesamt)
@@ -182,4 +187,4 @@ Dir gefällt das Projekt? Ich freue mich riesig über jeden Beitrag!
 
 ---
 
-**Powered by [OpenKairo](https://openkairo.de) · Developed with ♥ by [low-streaming](https://github.com/low-streaming) for the HA Community**
+**Powered by [OpenKairo](https://openkairo.de) · Developed with ♥ by [openkairo](https://github.com/openkairo) for the HA Community**

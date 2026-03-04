@@ -67,6 +67,14 @@ api:
         c11_v: string
         c12_n: string
         c12_v: string
+        dim_start: int
+        dim_end: int
+        dim_brt: float
+        p1_en: bool
+        p2_en: bool
+        p3_en: bool
+        p4_en: bool
+        p5_en: bool
       then:
         - lambda: |-
             id(solar_w).publish_state(solar);
@@ -108,6 +116,17 @@ api:
             id(custom11_v).publish_state(c11_v);
             id(custom12_n).publish_state(c12_n);
             id(custom12_v).publish_state(c12_v);
+            
+            id(page1_enabled) = p1_en;
+            id(page2_enabled) = p2_en;
+            id(page3_enabled) = p3_en;
+            id(page4_enabled) = p4_en;
+            id(page5_enabled) = p5_en;
+            
+            id(dim_start_time) = dim_start;
+            id(dim_end_time) = dim_end;
+            id(dim_brightness) = dim_brt;
+            id(evaluate_dimming).execute();
 
 ota:
   - platform: esphome
@@ -139,12 +158,74 @@ globals:
     type: int
     restore_value: no
     initial_value: '0'
+  - id: dim_start_time
+    type: int
+    restore_value: no
+    initial_value: '22'
+  - id: dim_end_time
+    type: int
+    restore_value: no
+    initial_value: '6'
+  - id: dim_brightness
+    type: float
+    restore_value: no
+    initial_value: '20.0'
+  - id: page1_enabled
+    type: bool
+    initial_value: 'true'
+  - id: page2_enabled
+    type: bool
+    initial_value: 'true'
+  - id: page3_enabled
+    type: bool
+    initial_value: 'true'
+  - id: page4_enabled
+    type: bool
+    initial_value: 'true'
+  - id: page5_enabled
+    type: bool
+    initial_value: 'true'
 
 # =======================================================
 # AUTO-SEITEN-WECHSEL (lokal auf ESP32, alle 15 Sekunden)
 # Laeuft nur wenn kein Touch-Override aktiv!
 # =======================================================
+script:
+  - id: evaluate_dimming
+    then:
+      - lambda: |-
+          if (!id(current_time).now().is_valid()) return;
+          int h = id(current_time).now().hour;
+          int p_start = id(dim_start_time);
+          int p_end = id(dim_end_time);
+          float b = id(dim_brightness);
+          
+          bool should_dim = false;
+          if (p_start < p_end) {
+            should_dim = (h >= p_start && h < p_end);
+          } else {
+            should_dim = (h >= p_start || h < p_end);
+          }
+          
+          static bool is_dimmed = false;
+          static bool first_run = true;
+          static float last_b = -1.0;
+          
+          // Apply changes if it's the first run, the dim state changes, or the user changes the target brightness.
+          if (first_run || is_dimmed != should_dim || last_b != b) {
+            auto call = id(backlight).turn_on();
+            call.set_brightness(should_dim ? (b / 100.0) : 1.0);
+            call.perform();
+            is_dimmed = should_dim;
+            last_b = b;
+            first_run = false;
+          }
+
 interval:
+  - interval: 1min
+    then:
+      - script.execute: evaluate_dimming
+
   - interval: 15s
     then:
       - if:
@@ -152,9 +233,24 @@ interval:
             lambda: 'return id(auto_switch_enabled) && (id(touch_override_ticks) <= 0);'
           then:
             - lambda: |-
-                int total = id(local_page_total);
-                if (total < 1) total = 5;
-                id(local_page) = (id(local_page) % total) + 1;
+                int next_page = id(local_page);
+                bool found = false;
+                for (int i = 0; i < 5; i++) {
+                  next_page++;
+                  if (next_page > 5) next_page = 1;
+                  bool is_en = false;
+                  if (next_page == 1) is_en = id(page1_enabled);
+                  if (next_page == 2) is_en = id(page2_enabled);
+                  if (next_page == 3) is_en = id(page3_enabled);
+                  if (next_page == 4) is_en = id(page4_enabled);
+                  if (next_page == 5) is_en = id(page5_enabled);
+                  if (is_en) {
+                    id(local_page) = next_page;
+                    found = true;
+                    break;
+                  }
+                }
+                if (!found) id(local_page) = 1;
                 id(touch_flash) = 0;
 
 time:
@@ -240,6 +336,9 @@ font:
   - file: "gfonts://Roboto"
     id: font_value
     size: 24
+  - file: "gfonts://Roboto"
+    id: font_value_small
+    size: 18
   - file: "gfonts://Roboto"
     id: font_label
     size: 12
@@ -419,6 +518,16 @@ display:
     lambda: |-
       static const char *TAG = "display";
       
+      auto print_val = [&](int x, int y, const char *format, ...) {
+        char buf[64];
+        va_list args;
+        va_start(args, format);
+        vsnprintf(buf, sizeof(buf), format, args);
+        va_end(args);
+        auto font = strlen(buf) >= 8 ? id(font_value_small) : id(font_value);
+        it.print(x, y, font, id(color_text), TextAlign::CENTER, buf);
+      };
+      
       // Background
       it.fill(id(color_bg));
 
@@ -449,14 +558,14 @@ display:
       int page = id(local_page);
       int total = id(local_page_total);
       if (total < 1) total = 5;
-      if (page < 1 || page > total) {
+      if (page < 1 || page > 5) {
         id(local_page) = 1;
         page = 1;
       }
 
       // HEADER
       it.filled_rectangle(0, 0, 320, 32, id(color_panel));
-      it.print(10, 16, id(font_title), id(color_solar), TextAlign::CENTER_LEFT, "Solar");
+      it.print(10, 16, id(font_title), id(color_solar), TextAlign::CENTER_LEFT, "OpenKairo Display");
       it.print(310, 16, id(font_title), id(color_text), TextAlign::CENTER_RIGHT, id(current_time).now().strftime("%H:%M").c_str());
       it.line(0, 32, 320, 32, id(color_text));
 
@@ -465,15 +574,15 @@ display:
         it.filled_rectangle(10, 42, 145, 80, id(color_panel));
         it.filled_rectangle(10, 42, 4, 80, id(color_solar));
         it.print(22, 50, id(font_label), id(color_solar), TextAlign::TOP_LEFT, "SOLAR");
-        if (id(show_kw_switch).state) it.printf(82, 82, id(font_value), id(color_text), TextAlign::CENTER, "%.2f kW", id(solar_w).state / 1000.0);
-        else it.printf(82, 82, id(font_value), id(color_text), TextAlign::CENTER, "%.0f W", id(solar_w).state);
+        if (id(show_kw_switch).state) print_val(82, 82, "%.2f kW", id(solar_w).state / 1000.0);
+        else print_val(82, 82, "%.0f W", id(solar_w).state);
         
         // 2. HAUSVERBRAUCH (Top Right)
         it.filled_rectangle(165, 42, 145, 80, id(color_panel));
         it.filled_rectangle(165, 42, 4, 80, id(color_house));
         it.print(177, 50, id(font_label), id(color_house), TextAlign::TOP_LEFT, "HAUSVERBRAUCH");
-        if (id(show_kw_switch).state) it.printf(237, 82, id(font_value), id(color_text), TextAlign::CENTER, "%.2f kW", id(house_w).state / 1000.0);
-        else it.printf(237, 82, id(font_value), id(color_text), TextAlign::CENTER, "%.0f W", id(house_w).state);
+        if (id(show_kw_switch).state) print_val(237, 82, "%.2f kW", id(house_w).state / 1000.0);
+        else print_val(237, 82, "%.0f W", id(house_w).state);
         
         // Battery Gauge Logic & Colors
         float soc = id(battery_soc).state;
@@ -492,7 +601,7 @@ display:
         it.print(22, 140, id(font_label), curr_bat_color, TextAlign::TOP_LEFT, "BATTERIE");
         
         // Large Percentage Display
-        it.printf(82, 166, id(font_value), id(color_text), TextAlign::CENTER, "%.0f %%", soc);
+        print_val(82, 166, "%.0f %%", soc);
         
         // Battery Icon Outline
         it.rectangle(20, 186, 75, 14, id(color_text));
@@ -519,8 +628,8 @@ display:
         it.filled_rectangle(165, 132, 145, 80, id(color_panel));
         it.filled_rectangle(165, 132, 4, 80, g_color);
         it.print(177, 140, id(font_label), g_color, TextAlign::TOP_LEFT, g_label);
-        if (id(show_kw_switch).state) it.printf(237, 172, id(font_value), id(color_text), TextAlign::CENTER, "%.2f kW", abs(g_val) / 1000.0);
-        else it.printf(237, 172, id(font_value), id(color_text), TextAlign::CENTER, "%.0f W", abs(g_val));
+        if (id(show_kw_switch).state) print_val(237, 172, "%.2f kW", abs(g_val) / 1000.0);
+        else print_val(237, 172, "%.0f W", abs(g_val));
       } else if (page == 2) {
         // PAGE 2 (STATISTICS) - OPENKAIRO STYLE
         
@@ -528,25 +637,25 @@ display:
         it.filled_rectangle(10, 42, 145, 80, id(color_panel));
         it.filled_rectangle(10, 42, 4, 80, id(color_solar));
         it.print(22, 50, id(font_label), id(color_solar), TextAlign::TOP_LEFT, "ERTRAG TAG");
-        it.printf(82, 82, id(font_value), id(color_text), TextAlign::CENTER, "%.1f kWh", id(yield_today).state);
+        print_val(82, 82, "%.1f kWh", id(yield_today).state);
         
         // 2. ERTRAG MONAT
         it.filled_rectangle(165, 42, 145, 80, id(color_panel));
         it.filled_rectangle(165, 42, 4, 80, id(color_solar));
         it.print(177, 50, id(font_label), id(color_solar), TextAlign::TOP_LEFT, "ERTRAG MONAT");
-        it.printf(237, 82, id(font_value), id(color_text), TextAlign::CENTER, "%.1f kWh", id(yield_month).state);
+        print_val(237, 82, "%.1f kWh", id(yield_month).state);
 
         // 3. ERTRAG JAHR
         it.filled_rectangle(10, 132, 145, 80, id(color_panel));
         it.filled_rectangle(10, 132, 4, 80, id(color_solar));
         it.print(22, 140, id(font_label), id(color_solar), TextAlign::TOP_LEFT, "ERTRAG JAHR");
-        it.printf(82, 172, id(font_value), id(color_text), TextAlign::CENTER, "%.1f kWh", id(yield_year).state);
+        print_val(82, 172, "%.0f kWh", id(yield_year).state);
 
         // 4. GESAMTERTRAG
         it.filled_rectangle(165, 132, 145, 80, id(color_panel));
         it.filled_rectangle(165, 132, 4, 80, id(color_solar));
         it.print(177, 140, id(font_label), id(color_solar), TextAlign::TOP_LEFT, "GESAMTERTRAG");
-        it.printf(237, 172, id(font_value), id(color_text), TextAlign::CENTER, "%.1f kWh", id(yield_total).state); 
+        print_val(237, 172, "%.0f kWh", id(yield_total).state); 
       } else if (page == 3) {
         // PAGE 3 (CUSTOM OPENKAIRO SENSORS)
         
@@ -555,7 +664,7 @@ display:
           it.filled_rectangle(10, 42, 145, 80, id(color_panel));
           it.filled_rectangle(10, 42, 4, 80, id(color_house)); 
           it.print(22, 50, id(font_label), id(color_house), TextAlign::TOP_LEFT, id(custom1_n).state.c_str());
-          it.printf(82, 82, id(font_value), id(color_text), TextAlign::CENTER, "%s", id(custom1_v).state.c_str());
+          print_val(82, 82, "%s", id(custom1_v).state.c_str());
         }
         
         // C2
@@ -563,7 +672,7 @@ display:
           it.filled_rectangle(165, 42, 145, 80, id(color_panel));
           it.filled_rectangle(165, 42, 4, 80, id(color_grid_out));
           it.print(177, 50, id(font_label), id(color_grid_out), TextAlign::TOP_LEFT, id(custom2_n).state.c_str());
-          it.printf(237, 82, id(font_value), id(color_text), TextAlign::CENTER, "%s", id(custom2_v).state.c_str());
+          print_val(237, 82, "%s", id(custom2_v).state.c_str());
         }
 
         // C3
@@ -571,7 +680,7 @@ display:
           it.filled_rectangle(10, 132, 145, 80, id(color_panel));
           it.filled_rectangle(10, 132, 4, 80, id(color_bat));
           it.print(22, 140, id(font_label), id(color_bat), TextAlign::TOP_LEFT, id(custom3_n).state.c_str());
-          it.printf(82, 172, id(font_value), id(color_text), TextAlign::CENTER, "%s", id(custom3_v).state.c_str());
+          print_val(82, 172, "%s", id(custom3_v).state.c_str());
         }
 
         // C4
@@ -579,7 +688,7 @@ display:
           it.filled_rectangle(165, 132, 145, 80, id(color_panel));
           it.filled_rectangle(165, 132, 4, 80, id(color_grid_in));
           it.print(177, 140, id(font_label), id(color_grid_in), TextAlign::TOP_LEFT, id(custom4_n).state.c_str());
-          it.printf(237, 172, id(font_value), id(color_text), TextAlign::CENTER, "%s", id(custom4_v).state.c_str()); 
+          print_val(237, 172, "%s", id(custom4_v).state.c_str()); 
         }
       } else if (page == 4) {
         // PAGE 4 (CUSTOM OPENKAIRO SENSORS VOL 2)
@@ -589,7 +698,7 @@ display:
           it.filled_rectangle(10, 42, 145, 80, id(color_panel));
           it.filled_rectangle(10, 42, 4, 80, id(color_house)); 
           it.print(22, 50, id(font_label), id(color_house), TextAlign::TOP_LEFT, id(custom5_n).state.c_str());
-          it.printf(82, 82, id(font_value), id(color_text), TextAlign::CENTER, "%s", id(custom5_v).state.c_str());
+          print_val(82, 82, "%s", id(custom5_v).state.c_str());
         }
         
         // C6
@@ -597,7 +706,7 @@ display:
           it.filled_rectangle(165, 42, 145, 80, id(color_panel));
           it.filled_rectangle(165, 42, 4, 80, id(color_grid_out));
           it.print(177, 50, id(font_label), id(color_grid_out), TextAlign::TOP_LEFT, id(custom6_n).state.c_str());
-          it.printf(237, 82, id(font_value), id(color_text), TextAlign::CENTER, "%s", id(custom6_v).state.c_str());
+          print_val(237, 82, "%s", id(custom6_v).state.c_str());
         }
 
         // C7
@@ -605,7 +714,7 @@ display:
           it.filled_rectangle(10, 132, 145, 80, id(color_panel));
           it.filled_rectangle(10, 132, 4, 80, id(color_bat));
           it.print(22, 140, id(font_label), id(color_bat), TextAlign::TOP_LEFT, id(custom7_n).state.c_str());
-          it.printf(82, 172, id(font_value), id(color_text), TextAlign::CENTER, "%s", id(custom7_v).state.c_str());
+          print_val(82, 172, "%s", id(custom7_v).state.c_str());
         }
 
         // C8
@@ -613,7 +722,7 @@ display:
           it.filled_rectangle(165, 132, 145, 80, id(color_panel));
           it.filled_rectangle(165, 132, 4, 80, id(color_grid_in));
           it.print(177, 140, id(font_label), id(color_grid_in), TextAlign::TOP_LEFT, id(custom8_n).state.c_str());
-          it.printf(237, 172, id(font_value), id(color_text), TextAlign::CENTER, "%s", id(custom8_v).state.c_str()); 
+          print_val(237, 172, "%s", id(custom8_v).state.c_str()); 
         }
       } else if (page == 5) {
         // PAGE 5 (MINING SENSORS)
@@ -623,7 +732,7 @@ display:
           it.filled_rectangle(10, 42, 145, 80, id(color_panel));
           it.filled_rectangle(10, 42, 4, 80, id(color_bat_mid)); 
           it.print(22, 50, id(font_label), id(color_bat_mid), TextAlign::TOP_LEFT, id(custom9_n).state.c_str());
-          it.printf(82, 82, id(font_value), id(color_text), TextAlign::CENTER, "%s", id(custom9_v).state.c_str());
+          print_val(82, 82, "%s", id(custom9_v).state.c_str());
         }
         
         // M2
@@ -631,7 +740,7 @@ display:
           it.filled_rectangle(165, 42, 145, 80, id(color_panel));
           it.filled_rectangle(165, 42, 4, 80, id(color_bat_mid));
           it.print(177, 50, id(font_label), id(color_bat_mid), TextAlign::TOP_LEFT, id(custom10_n).state.c_str());
-          it.printf(237, 82, id(font_value), id(color_text), TextAlign::CENTER, "%s", id(custom10_v).state.c_str());
+          print_val(237, 82, "%s", id(custom10_v).state.c_str());
         }
 
         // M3
@@ -639,7 +748,7 @@ display:
           it.filled_rectangle(10, 132, 145, 80, id(color_panel));
           it.filled_rectangle(10, 132, 4, 80, id(color_bat_mid));
           it.print(22, 140, id(font_label), id(color_bat_mid), TextAlign::TOP_LEFT, id(custom11_n).state.c_str());
-          it.printf(82, 172, id(font_value), id(color_text), TextAlign::CENTER, "%s", id(custom11_v).state.c_str());
+          print_val(82, 172, "%s", id(custom11_v).state.c_str());
         }
 
         // M4
@@ -647,7 +756,7 @@ display:
           it.filled_rectangle(165, 132, 145, 80, id(color_panel));
           it.filled_rectangle(165, 132, 4, 80, id(color_bat_mid));
           it.print(177, 140, id(font_label), id(color_bat_mid), TextAlign::TOP_LEFT, id(custom12_n).state.c_str());
-          it.printf(237, 172, id(font_value), id(color_text), TextAlign::CENTER, "%s", id(custom12_v).state.c_str()); 
+          print_val(237, 172, "%s", id(custom12_v).state.c_str()); 
         }
       }
 
@@ -663,8 +772,19 @@ display:
         it.printf(5, 231, id(font_label), id(color_panel), TextAlign::CENTER_LEFT, "< >"); // unsichtbar
       }
       
-      // Seitenanzeige (lokal)
-      it.printf(160, 231, id(font_label), id(color_house), TextAlign::CENTER, "SEITE %d / %d", page, total);
+      // Seitenanzeige (lokal) mit korrekter Index-Berechnung
+      int idx = 0;
+      int tot = 0;
+      bool p[5] = {id(page1_enabled), id(page2_enabled), id(page3_enabled), id(page4_enabled), id(page5_enabled)};
+      for(int i=0; i<5; i++){
+        if(p[i]) {
+          tot++;
+          if((i+1) == page) idx = tot;
+        }
+      }
+      if(idx == 0) idx = 1;
+      if(tot == 0) tot = total;
+      it.printf(160, 231, id(font_label), id(color_house), TextAlign::CENTER, "SEITE %d / %d", idx, tot);
       
       // Touch-Override-Anzeige rechts im Footer
       if (id(touch_override_ticks) > 0) {
@@ -708,9 +828,25 @@ binary_sensor:
     y_max: 240
     on_press:
       - lambda: |-
-          int total = id(local_page_total);
-          if (total < 1) total = 5;
-          id(local_page) = (id(local_page) % total) + 1;
+          int next_page = id(local_page);
+          bool found = false;
+          for (int i = 0; i < 5; i++) {
+            next_page++;
+            if (next_page > 5) next_page = 1;
+            bool is_en = false;
+            if (next_page == 1) is_en = id(page1_enabled);
+            if (next_page == 2) is_en = id(page2_enabled);
+            if (next_page == 3) is_en = id(page3_enabled);
+            if (next_page == 4) is_en = id(page4_enabled);
+            if (next_page == 5) is_en = id(page5_enabled);
+            if (is_en) {
+              id(local_page) = next_page;
+              found = true;
+              break;
+            }
+          }
+          if (!found) id(local_page) = 1;
+          
           id(touch_flash) = 3;
           id(touch_override_ticks) = 30;
-          ESP_LOGI("touch", "Touch! Seite %d / %d", id(local_page), total);
+          ESP_LOGI("touch", "Touch! Seite %d", id(local_page));

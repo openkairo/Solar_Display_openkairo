@@ -168,7 +168,8 @@ class CYDPreview extends LitElement {
     const state = this.hass.states[entityId].state;
     if (state === 'unavailable' || state === 'unknown') return defaultVal;
     const parsed = parseFloat(state);
-    return isNaN(parsed) ? defaultVal : parsed;
+    if (isNaN(parsed)) return defaultVal;
+    return parseFloat(parsed.toFixed(2));
   }
 
   render() {
@@ -210,8 +211,8 @@ class CYDPreview extends LitElement {
 
     const yield_today = this.getLiveValue(this.editConfig.yield_today_entity, 12.4);
     const yield_month = this.getLiveValue(this.editConfig.yield_month_entity, 114.2);
-    const yield_year = this.getLiveValue(this.editConfig.yield_year_entity, 1054.8);
-    const yield_total = this.getLiveValue(this.editConfig.yield_total_entity, 3450.5);
+    const yield_year = Math.round(this.getLiveValue(this.editConfig.yield_year_entity, 1054.8));
+    const yield_total = Math.round(this.getLiveValue(this.editConfig.yield_total_entity, 3450.5));
 
     const c1_n = this.editConfig.custom1_name || "Custom 1";
     const c1_v = this.getLiveValue(this.editConfig.custom1_entity, 21.5) + " °C";
@@ -463,9 +464,11 @@ class CYDPreview extends LitElement {
                 </div>
             </div>
 
-  <div class="form-group" style="width: 50%;">
-    <label>Batterie Füllstand (%)</label>
-    ${this.renderEntitySelect('battery_soc_entity', ['sensor', 'input_number'])}
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label>Batterie Füllstand (%)</label>
+                ${this.renderEntitySelect('battery_soc_entity', ['sensor', 'input_number'])}
+              </div>
             </div>
         </div>
 
@@ -672,8 +675,47 @@ class CYDPreview extends LitElement {
         <div class="tech-box" style="margin-top: 20px; border-color: rgba(155, 89, 182, 0.4);">
             <h3 style="color: #9b59b6; margin-top: 0;">⚙️ Allgemeine Eigenschaften</h3>
             
+            <div class="form-row">
+                <div class="form-group flex-1">
+                  <label>Update Intervall (Sekunden)</label>
+                  <input type="number" name="update_interval" min="1" .value="${this.editConfig.update_interval || 5}" @input="${this.handleFormInput}">
+                  <small>Wie oft sollen Daten zum ESP32 gesendet werden?</small>
+                </div>
+                ${(this.editConfig.page_switch_mode || 'auto') !== 'touch' ? html`
+                <div class="form-group flex-1">
+                  <label>Seitenwechsel Intervall (Sekunden)</label>
+                  <input type="number" name="page_interval" min="5" .value="${this.editConfig.page_interval || 10}" @input="${this.handleFormInput}">
+                  <small>Wie lange eine Seite auf dem LCD angezeigt wird.</small>
+                </div>
+                ` : html`
+                <div class="form-group flex-1" style="opacity:0.4; pointer-events:none;">
+                  <label>Seitenwechsel Intervall (Sekunden)</label>
+                  <input type="number" value="${this.editConfig.page_interval || 10}" disabled>
+                  <small>⚠️ Nicht aktiv im Touch-Modus</small>
+                </div>
+                `}
+            </div>
+
+            <div style="margin-top: 15px; margin-bottom: 20px;">
+              <h4 style="color: #bbb; margin-bottom: 15px;">🌙 Nacht-Dimming Anzeige</h4>
+              <div class="form-row" style="margin-bottom: 0;">
+                <div class="form-group flex-1">
+                  <label>Start Stunde (0-23)</label>
+                  <input type="number" name="dim_start_time" min="0" max="23" .value="${this.editConfig.dim_start_time !== undefined ? this.editConfig.dim_start_time : 22}" @input="${this.handleFormInput}">
+                </div>
+                <div class="form-group flex-1">
+                  <label>Ende Stunde (0-23)</label>
+                  <input type="number" name="dim_end_time" min="0" max="23" .value="${this.editConfig.dim_end_time !== undefined ? this.editConfig.dim_end_time : 6}" @input="${this.handleFormInput}">
+                </div>
+                <div class="form-group flex-1">
+                  <label>Helligkeit (%)</label>
+                  <input type="number" name="dim_brightness" min="1" max="100" .value="${this.editConfig.dim_brightness !== undefined ? this.editConfig.dim_brightness : 20}" @input="${this.handleFormInput}">
+                </div>
+              </div>
+            </div>
+
             <!-- Seitenwechsel-Modus -->
-            <div style="margin-bottom: 20px;">
+            <div style="margin-top: 20px;">
               <label style="display:block; margin-bottom: 10px; font-weight: 600; color: #ccc;">Seitenwechsel-Modus</label>
               <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 ${['auto', 'touch', 'both'].map(mode => {
@@ -702,27 +744,6 @@ class CYDPreview extends LitElement {
                   `;
     })}
               </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group flex-1">
-                  <label>Update Intervall (Sekunden)</label>
-                  <input type="number" name="update_interval" min="1" .value="${this.editConfig.update_interval || 5}" @input="${this.handleFormInput}">
-                  <small>Wie oft sollen Daten zum ESP32 gesendet werden?</small>
-                </div>
-                ${(this.editConfig.page_switch_mode || 'auto') !== 'touch' ? html`
-                <div class="form-group flex-1">
-                  <label>Seitenwechsel Intervall (Sekunden)</label>
-                  <input type="number" name="page_interval" min="5" .value="${this.editConfig.page_interval || 10}" @input="${this.handleFormInput}">
-                  <small>Wie lange eine Seite auf dem LCD angezeigt wird.</small>
-                </div>
-                ` : html`
-                <div class="form-group flex-1" style="opacity:0.4; pointer-events:none;">
-                  <label>Seitenwechsel Intervall (Sekunden)</label>
-                  <input type="number" value="${this.editConfig.page_interval || 10}" disabled>
-                  <small>⚠️ Nicht aktiv im Touch-Modus</small>
-                </div>
-                `}
             </div>
         </div>
 
@@ -1116,10 +1137,11 @@ class CYDPreview extends LitElement {
 }
       .form-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 15px;
   margin-bottom: 15px;
 }
-      .flex-1 { flex: 1; }
+      .flex-1 { flex: 1; min-width: 220px; }
       
       .form-group {
   display: flex;
@@ -1254,6 +1276,12 @@ class CYDPreview extends LitElement {
         line-height: 1.5;
         border-top: 1px solid rgba(255, 255, 255, 0.05);
         background: rgba(0, 0, 0, 0.2);
+      }
+      @media screen and (max-width: 600px) {
+        .form-row {
+          flex-direction: column;
+          gap: 10px;
+        }
       }
 `;
   }

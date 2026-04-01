@@ -38,17 +38,6 @@
 
 ---
 
-## ⚡ Erstinstallation (Web-Flasher)
-
-Wenn du ein frisches Display hast, kannst du es direkt über den Browser flashen:
-
-1. Öffne den **[CYD Web-Flasher](https://openkairo.github.io/Solar_Display_openkairo/)** (Chrome/Edge erforderlich)
-2. Verbinde den ESP32 per USB mit deinem PC
-3. Klicke auf **Installieren** und wähle den COM-Port aus
-4. Nach dem Flash verbindet sich das Display mit deinem WLAN (Portal öffnet sich)
-
----
-
 ## 📦 Integration in Home Assistant (HACS)
 
 HACS ermöglicht die einfache Steuerung des Displays **und automatische Updates**.

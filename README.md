@@ -20,7 +20,6 @@
 | 🔄 **Auto-Seitenwechsel** | HA rotiert Seiten nach konfigurierbarem Intervall |
 | 🔄👆 **Hybridmodus** | Auto + Touch-Override für ~30 Sekunden |
 | 🆕 **One-Click Update** | Firmware-Updates direkt im HA-Panel mit einem Klick |
-| 🆕 **Web-Flasher** | Erstinstallation direkt im Browser ohne Zusatzsoftware |
 | 🖥️ **HA Panel** | Interaktives Sidebar-Panel mit 1:1 Live-Preview |
 
 ---
@@ -75,9 +74,6 @@ Das System prüft automatisch auf neue Versionen.
 - ✅ **28 Custom Sensoren**: Unterstützung für Seiten 1 bis 9 voll ausgebaut
 - ✅ **Performance Boost**: Refactoring der Display-Logik für maximale Stabilität
 - ✅ **Bugfix**: Fehler beim Seiten-Synchronisieren mit HA behoben
-
-### v1.1.0 — 2026-02-28 🔧 Repository Transfer
-- 🔁 Repository zu [openkairo/Solar_Display_openkairo](https://github.com/openkairo/Solar_Display_openkairo) umgezogen
 
 ---
 

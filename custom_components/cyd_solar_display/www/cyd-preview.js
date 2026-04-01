@@ -1,4 +1,4 @@
-﻿import {
+import {
   LitElement,
   html,
   css,
@@ -13,6 +13,9 @@ class CYDPreview extends LitElement {
       page: { type: Number },
       activeTab: { type: String },
       editConfig: { type: Object },
+      latestVersion: { type: String },
+      firmwareUpdateEntityId: { type: String },
+      _checkingUpdate: { type: Boolean },
       _pickerSearch: { type: Object }
     };
   }
@@ -22,6 +25,9 @@ class CYDPreview extends LitElement {
     this.page = 1;
     this.activeTab = 'overview';
     this.editConfig = {};
+    this.latestVersion = "0.0.0";
+    this.firmwareUpdateEntityId = "";
+    this._checkingUpdate = false;
     this._pickerSearch = {};
   }
 
@@ -34,7 +40,9 @@ class CYDPreview extends LitElement {
     const entryId = this.panel.config.entry_id;
     try {
       const data = await this.hass.callApi('GET', `cyd_solar_display/config/${entryId}`);
-      this.editConfig = data.options || {};
+      this.editConfig = JSON.parse(JSON.stringify(data.config));
+      this.latestVersion = data.latest_version || "0.0.0";
+      this.firmwareUpdateEntityId = data.firmware_update_entity_id || "";
       this.requestUpdate();
     } catch (e) { console.error("Failed to load config", e); }
   }
@@ -58,11 +66,39 @@ class CYDPreview extends LitElement {
     if (!this.panel || !this.panel.config || !this.panel.config.entry_id) return;
     const entryId = this.panel.config.entry_id;
     try {
-      await this.hass.callApi('POST', `cyd_solar_display/config/${entryId}`, this.editConfig);
+      const payload = { ...this.editConfig };
+      delete payload.last_page;
+      delete payload._last_sync;
+      
+      await this.hass.callApi('POST', `cyd_solar_display/config/${entryId}`, payload);
       alert("✅ Einstellungen wurden erfolgreich gespeichert!");
     } catch (e) {
       console.error(e);
       alert("❌ Fehler beim Speichern der Einstellungen.");
+    }
+  }
+
+  async checkUpdate() {
+    if (!this.panel || !this.panel.config || !this.panel.config.entry_id) return;
+    const entryId = this.panel.config.entry_id;
+    this._checkingUpdate = true;
+    this.requestUpdate();
+
+    try {
+      const data = await this.hass.callApi('POST', `cyd_solar_display/check_update/${entryId}`);
+      this.latestVersion = data.latest_version || "0.0.0";
+      
+      if (data.updated) {
+        // Version changed
+      } else {
+        alert("ℹ️ Du bist bereits auf dem neuesten Stand!");
+      }
+    } catch (e) {
+      console.error("Manual update check failed", e);
+      alert("❌ Fehler beim Abrufen der Version.");
+    } finally {
+      this._checkingUpdate = false;
+      this.requestUpdate();
     }
   }
 
@@ -183,12 +219,14 @@ class CYDPreview extends LitElement {
           <div class="tabs">
             <div class="tab ${this.activeTab === 'overview' ? 'active' : ''}" @click="${() => this.activeTab = 'overview'}">Dashboard</div>
             <div class="tab ${this.activeTab === 'settings' ? 'active' : ''}" @click="${() => this.activeTab = 'settings'}">Einstellungen</div>
+            <div class="tab ${this.activeTab === 'updates' ? 'active' : ''}" @click="${() => this.activeTab = 'updates'}">Display Update</div>
             <div class="tab ${this.activeTab === 'info' ? 'active' : ''}" @click="${() => this.activeTab = 'info'}">Hilfe & Info</div>
           </div>
 
           <div class="content">
             ${this.activeTab === 'overview' ? this.renderOverview() : ''}
             ${this.activeTab === 'settings' ? this.renderSettings() : ''}
+            ${this.activeTab === 'updates' ? this.renderUpdates() : ''}
             ${this.activeTab === 'info' ? this.renderInfo() : ''}
           </div>
           
@@ -246,6 +284,10 @@ class CYDPreview extends LitElement {
     const hasPage3 = this.editConfig.enable_page3 !== false;
     const hasPage4 = this.editConfig.enable_page4 !== false;
     const hasPage5 = this.editConfig.enable_page5 !== false;
+    const hasPage6 = !!this.editConfig.enable_page6;
+    const hasPage7 = !!this.editConfig.enable_page7;
+    const hasPage8 = !!this.editConfig.enable_page8;
+    const hasPage9 = !!this.editConfig.enable_page9;
 
     const isNegative = grid_w < 0;
     const pVal = (w) => this.editConfig.show_kw ? (w / 1000).toFixed(2) : Math.round(w);
@@ -362,7 +404,7 @@ class CYDPreview extends LitElement {
                       </div>` : ''}
                     </div>
                   </div>
-                ` : html`
+                ` : this.page === 5 ? html`
                   <div class="page page5">
                     <div class="stats-grid">
                       ${this.editConfig.mining1_entity ? html`
@@ -387,6 +429,28 @@ class CYDPreview extends LitElement {
                       </div>` : ''}
                     </div>
                   </div>
+                ` : this.page >= 6 && this.page <= 9 ? html`
+                  <div class="page page-custom">
+                    <div class="stats-grid">
+                      ${[1, 2, 3, 4].map(n => {
+                        const baseIdx = (this.page - 6) * 4 + 8 + n;
+                        const nameKey = `custom${baseIdx}_name`;
+                        const entKey = `custom${baseIdx}_entity`;
+                        const name = this.editConfig[nameKey] || `Custom ${baseIdx}`;
+                        const val = this.getLiveValue(this.editConfig[entKey], 0);
+                        const colorMap = ['#00f3ff', '#00ff73', '#b026ff', '#ff003c'];
+                        return this.editConfig[entKey] ? html`
+                          <div class="stat-item" style="border-left: 4px solid ${colorMap[n-1]};">
+                              <div class="label" style="color: ${colorMap[n-1]};">${name}</div>
+                              <div class="value">${val}</div>
+                          </div>` : '';
+                      })}
+                    </div>
+                  </div>
+                ` : html`
+                  <div class="page page-empty">
+                    <div style="text-align:center;color:#666;margin-top:40px;">Seite nicht aktiv</div>
+                  </div>
                 `}
 
                 <div class="footer">
@@ -396,6 +460,10 @@ class CYDPreview extends LitElement {
                     ${hasPage3 ? html`<div class="dot ${this.page === 3 ? 'active' : ''}"></div>` : ''}
                     ${hasPage4 ? html`<div class="dot ${this.page === 4 ? 'active' : ''}"></div>` : ''}
                     ${hasPage5 ? html`<div class="dot ${this.page === 5 ? 'active' : ''}"></div>` : ''}
+                    ${hasPage6 ? html`<div class="dot ${this.page === 6 ? 'active' : ''}"></div>` : ''}
+                    ${hasPage7 ? html`<div class="dot ${this.page === 7 ? 'active' : ''}"></div>` : ''}
+                    ${hasPage8 ? html`<div class="dot ${this.page === 8 ? 'active' : ''}"></div>` : ''}
+                    ${hasPage9 ? html`<div class="dot ${this.page === 9 ? 'active' : ''}"></div>` : ''}
                   </div>
                 </div>
               </div>
@@ -405,6 +473,10 @@ class CYDPreview extends LitElement {
                 ${hasPage3 ? html`<button @click="${() => this.page = 3}">P3</button>` : ''}
                 ${hasPage4 ? html`<button @click="${() => this.page = 4}">P4</button>` : ''}
                 ${hasPage5 ? html`<button @click="${() => this.page = 5}">P5</button>` : ''}
+                ${hasPage6 ? html`<button @click="${() => this.page = 6}">P6</button>` : ''}
+                ${hasPage7 ? html`<button @click="${() => this.page = 7}">P7</button>` : ''}
+                ${hasPage8 ? html`<button @click="${() => this.page = 8}">P8</button>` : ''}
+                ${hasPage9 ? html`<button @click="${() => this.page = 9}">P9</button>` : ''}
               </div>
             </div>
           </div>
@@ -615,7 +687,7 @@ class CYDPreview extends LitElement {
             </div>
             ` : ''}
         </div>
-        
+
         <div class="tech-box" style="margin-top: 20px; border-color: #ff9800;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <h3 style="color: #ff9800; margin-top: 0;">⛏️ Mining Sensoren (Seite 5)</h3>
@@ -628,7 +700,7 @@ class CYDPreview extends LitElement {
             ${this.editConfig.enable_page5 !== false ? html`
             <div class="form-row">
               <div class="form-group flex-1">
-                <label>Name 1 (z.B. Hashrate)</label>
+                <label>Name 1</label>
                 <input type="text" name="mining1_name" .value="${this.editConfig.mining1_name || ''}" @input="${this.handleFormInput}">
               </div>
               <div class="form-group flex-1">
@@ -639,7 +711,7 @@ class CYDPreview extends LitElement {
 
             <div class="form-row">
               <div class="form-group flex-1">
-                <label>Name 2 (z.B. Temp)</label>
+                <label>Name 2</label>
                 <input type="text" name="mining2_name" .value="${this.editConfig.mining2_name || ''}" @input="${this.handleFormInput}">
               </div>
               <div class="form-group flex-1">
@@ -672,6 +744,46 @@ class CYDPreview extends LitElement {
             ` : ''}
         </div>
 
+        ${[6, 7, 8, 9].map(pageIdx => {
+          const baseIdx = (pageIdx - 6) * 4 + 9;
+          const colorMap = { 6: '#00f3ff', 7: '#00ff73', 8: '#b026ff', 9: '#ff003c' };
+          const color = colorMap[pageIdx];
+          const enableKey = `enable_page${pageIdx}`;
+          
+          return html`
+            <div class="tech-box" style="margin-top: 20px; border-color: ${color};">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="color: ${color}; margin-top: 0;">🔮 Eigene Sensoren (Seite ${pageIdx})</h3>
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #fff;">
+                    <input type="checkbox" name="${enableKey}" .checked="${!!this.editConfig[enableKey]}" @change="${this.handleFormInput}" style="width: 18px; height: 18px; accent-color: ${color};">
+                    Aktivieren
+                </label>
+              </div>
+              
+              ${!!this.editConfig[enableKey] ? html`
+              <p style="color:#aaa; font-size: 12px; margin-top:-10px; margin-bottom: 15px;">Füge bis zu 4 eigene Sensoren hinzu, welche auf der Seite ${pageIdx} angezeigt werden.</p>
+              ${[0, 1, 2, 3].map(i => {
+                const sensorIdx = baseIdx + i;
+                const nameKey = `custom${sensorIdx}_name`;
+                const entKey = `custom${sensorIdx}_entity`;
+                return html`
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label>Name ${sensorIdx}</label>
+                      <input type="text" name="${nameKey}" .value="${this.editConfig[nameKey] || ''}" @input="${this.handleFormInput}">
+                    </div>
+                    <div class="form-group flex-1">
+                      <label>Sensor ${sensorIdx}</label>
+                      ${this.renderEntitySelect(entKey, ['sensor', 'input_number'])}
+                    </div>
+                  </div>
+                `;
+              })}
+              ` : ''}
+            </div>
+          `;
+        })}
+        
         <div class="tech-box" style="margin-top: 20px; border-color: rgba(155, 89, 182, 0.4);">
             <h3 style="color: #9b59b6; margin-top: 0;">⚙️ Allgemeine Eigenschaften</h3>
             
@@ -694,6 +806,20 @@ class CYDPreview extends LitElement {
                   <small>⚠️ Nicht aktiv im Touch-Modus</small>
                 </div>
                 `}
+            </div>
+
+            <div style="margin-top: 15px; margin-bottom: 20px; padding: 15px; background: rgba(0,243,255,0.05); border: 1px solid rgba(0,243,255,0.3); border-radius: 8px;">
+              <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; color: #fff; margin: 0;">
+                  <input type="checkbox" name="broadcast_mode" .checked="${this.editConfig.broadcast_mode === true}" @change="${this.handleFormInput}" style="width: 20px; height: 20px; accent-color: #00f3ff; margin-top: 3px; flex-shrink: 0;">
+                  <div>
+                    <div style="font-weight: bold; color: #00f3ff; font-size: 15px;">Synchron-Modus (Broadcast / Alle Displays) aktivieren</div>
+                    <div style="color: #aaa; font-size: 13px; margin-top: 5px; line-height: 1.5;">
+                      Wenn aktiv, versorgt diese Integration <b>alle</b> deine CYD Displays gleichzeitig mit den exakt gleichen Daten und Einstellungen. <br>
+                      <strong style="color: #4caf50;">Beide Displays bleiben dabei aber völlig unabhängig per Touch-Eingabe bedienbar!</strong>
+                      <br><strong style="color: #ff5252;">WICHTIG bei 2+ Displays:</strong> Aktiviere diesen Haken hier und lösche die zweite "Geräte/Dienste" Karte in Home Assistant! Diese eine reicht nun aus.
+                    </div>
+                  </div>
+              </label>
             </div>
 
             <div style="margin-top: 15px; margin-bottom: 20px;">
@@ -745,6 +871,40 @@ class CYDPreview extends LitElement {
     })}
               </div>
             </div>
+
+            <!-- Seitenwechsel-Steuerung (Rotation Source) -->
+            <div style="margin-top: 25px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+              <label style="display:block; margin-bottom: 12px; font-weight: 600; color: #ccc;">Seitenwechsel-Steuerung durch</label>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                ${['ha', 'display'].map(source => {
+                  const labels = {
+                    ha: { icon: '🏠', title: 'Home Assistant', desc: 'Zentral gesteuert' },
+                    display: { icon: '📱', title: 'Display lokal', desc: 'Jedes Display rotiert selbst' },
+                  }[source];
+                  const isActive = (this.editConfig.page_rotation_source || 'ha') === source;
+                  return html`
+                    <div
+                      @click=${() => { this.editConfig = { ...this.editConfig, page_rotation_source: source }; this.requestUpdate(); }}
+                      style="
+                        flex: 1; min-width: 140px; cursor: pointer; padding: 12px 10px;
+                        border-radius: 8px; border: 2px solid ${isActive ? '#3498db' : 'rgba(52,152,219,0.1)'};
+                        background: ${isActive ? 'rgba(52,152,219,0.15)' : 'rgba(255,255,255,0.02)'};
+                        transition: all 0.2s ease;
+                        text-align: center;
+                      "
+                    >
+                      <div style="font-size: 1.4em; margin-bottom: 4px;">${labels.icon}</div>
+                      <div style="font-weight: 700; color: ${isActive ? '#3498db' : '#aaa'}; font-size: 0.9em;">${labels.title}</div>
+                      <div style="font-size: 0.65em; color: #777; margin-top: 2px;">${labels.desc}</div>
+                    </div>
+                  `;
+                })}
+              </div>
+              <p style="font-size: 0.7em; color: #666; margin-top: 10px; line-height: 1.3;">
+                💡 <b>Display lokal</b> empfohlen bei mehreren Displays mit unterschiedlichen Seiten-Speicherungen.
+              </p>
+            </div>
+        </div>
         </div>
 
         <div class="form-actions" style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; text-align: right;">
@@ -754,11 +914,146 @@ class CYDPreview extends LitElement {
   `;
   }
 
-  renderInfo() {
+  async triggerUpdate(entityId) {
+    if (!confirm("Firmware Update starten? Das Display wird danach neu gestartet.")) return;
+    try {
+      await this.hass.callService("update", "install", { entity_id: entityId });
+      alert("✅ Update-Befehl wurde gesendet!");
+    } catch (e) {
+      console.error(e);
+      alert("❌ Fehler beim Senden des Updates.");
+    }
+  }
+
+  renderUpdateCard(entity) {
+    const isUpdateAvailable = entity.state === 'on';
+    const inProgress = entity.attributes.in_progress === true || entity.attributes.update_action === 'installing';
+    let installed = entity.attributes.installed_version || 'Unbekannt';
+    let latest = entity.attributes.latest_version || 'Unbekannt';
+    const name = entity.attributes.friendly_name || entity.entity_id;
+    const ip = entity.attributes.display_ip || 'Unbekannt';
+
+    if (!installed.startsWith('v') && installed !== 'Unbekannt') installed = 'v' + installed;
+    if (!latest.startsWith('v') && latest !== 'Unbekannt') latest = 'v' + latest;
+
     return html`
-  <div class="card" >
-        <h2>ℹ️ Informationen & Ersteinrichtung</h2>
-        <p>Willkommen beim <strong>CYD Solar Display</strong> Panel.</p>
+      <div class="tech-box" style="margin-bottom: 15px; border-color: ${isUpdateAvailable ? '#00f3ff' : 'rgba(255,255,255,0.1)'}; background: ${isUpdateAvailable ? 'rgba(0, 243, 255, 0.05)' : 'rgba(0,0,0,0.2)'};">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+          <div style="flex: 1; min-width: 250px;">
+            <h3 style="margin: 0; color: #fff; display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 1.4em; filter: drop-shadow(0 0 5px ${isUpdateAvailable ? '#00f3ff' : '#4caf50'});">${isUpdateAvailable ? '🆕' : '📱'}</span> 
+              ${name}
+              <span style="font-size: 14px; font-weight: 500; color: #aaa; background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">🌐 ${ip}</span>
+            </h3>
+            <div style="margin-top: 8px; font-size: 14px; color: #aaa;">
+              Installiert: <span style="color: #fff; font-weight: bold;">${installed}</span> | 
+              Aktuell verfügbar: <span style="${isUpdateAvailable ? 'color: #00f3ff; font-weight: bold;' : 'color: #aaa;'}">${latest}</span>
+            </div>
+          </div>
+          <div>
+            ${inProgress ? html`
+              <div style="color: #fdd835; font-weight: bold; background: rgba(253,216,53,0.1); padding: 10px 15px; border-radius: 6px; border: 1px solid rgba(253,216,53,0.3); display: flex; align-items: center; gap: 8px;">
+                ⏳ Update läuft...
+              </div>
+            ` : isUpdateAvailable ? html`
+              <button 
+                @click="${() => this.triggerUpdate(entity.entity_id)}"
+                style="display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #00f3ff 0%, #0084ff 100%); color: #000; padding: 12px 25px; border-radius: 8px; border:none; font-size: 14px; font-weight: 900; box-shadow: 0 4px 15px rgba(0, 243, 255, 0.4); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; text-transform: uppercase; letter-spacing: 1px;"
+                onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0, 243, 255, 0.6)';" 
+                onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0, 243, 255, 0.4)';"
+              >
+                🚀 Update Starten
+              </button>
+            ` : html`
+              <div style="background: rgba(76, 175, 80, 0.1); color: #4caf50; padding: 8px 16px; border-radius: 6px; border: 1px solid rgba(76, 175, 80, 0.3); font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                 <div style="width: 8px; height: 8px; background: #4caf50; border-radius: 50%; box-shadow: 0 0 8px #4caf50;"></div>
+                 Auf dem neuesten Stand
+              </div>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  renderUpdates() {
+    if (!this.hass) return html``;
+    
+    // Find all update entities that match CYD Solar Display
+    // ONLY display update entities that have a non-undefined display_ip attribute (thereby excluding ESPHome's internal updates)
+    const cydUpdates = Object.keys(this.hass.states)
+      .filter(eid => eid.startsWith('update.'))
+      .map(eid => this.hass.states[eid])
+      .filter(state => state.attributes.display_ip !== undefined);
+
+    return html`
+      <div class="card edit-card">
+        <h2>🚀 Display Firmware Updates</h2>
+        <p style="color:#aaa; font-size:14px; margin-bottom: 25px;">
+          Hier siehst du alle verbundenen CYD Solar Displays und kannst gezielt Updates anstoßen.
+        </p>
+
+        ${cydUpdates.length === 0 ? html`
+          <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; text-align: center; color: #888;">
+            Keine Displays aus dem Custom Component gefunden (oder ein Neustart ist nach dem Integration-Update nötig).
+          </div>
+        ` : cydUpdates.map(entity => this.renderUpdateCard(entity))}
+      </div>
+    `;
+  }
+
+  renderInfo() {
+    const currentVersion = "1.2.7";
+    const latest = this.latestVersion || "0.0.0";
+    const updateAvailable = latest !== "0.0.0" && latest !== currentVersion;
+
+    return html`
+    <div class="card" style="margin-bottom: 20px; border-color: ${updateAvailable ? '#00f3ff' : 'rgba(255,255,255,0.1)'}; background: ${updateAvailable ? 'rgba(0, 243, 255, 0.05)' : 'rgba(0,0,0,0.2)'};">
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+        <div style="flex: 1; min-width: 250px;">
+          <h3 style="margin: 0; color: #fff; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 1.4em; filter: drop-shadow(0 0 5px ${updateAvailable ? '#00f3ff' : '#4caf50'});">${updateAvailable ? '🚀' : '✅'}</span> 
+            System & Firmware Status
+          </h3>
+          <div style="margin-top: 8px; font-size: 14px; color: #aaa; display: flex; align-items: center; gap: 10px;">
+            <div>
+              Installiert: <span style="color: #fff; font-weight: bold;">v${currentVersion}</span>
+              ${updateAvailable ? html` | <span style="color: #00f3ff; font-weight: 500;">Neue Version v${latest} verfügbar!</span>` : html` | <span style="color: #4caf50; font-weight: 500;">System ist auf dem neuesten Stand.</span>`}
+            </div>
+            <button 
+              @click="${this.checkUpdate}" 
+              ?disabled="${this._checkingUpdate}"
+              style="background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; transition: all 0.2s;"
+              onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+              onmouseout="this.style.background='rgba(255,255,255,0.05)'"
+            >
+              ${this._checkingUpdate ? 'Suche...' : '🔍 Prüfen'}
+            </button>
+          </div>
+        </div>
+        <div>
+          ${updateAvailable ? html`
+            <button 
+              @click="${() => { this.activeTab = 'updates'; }}"
+              style="display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #00f3ff 0%, #0084ff 100%); color: #000; padding: 12px 25px; border-radius: 8px; border:none; font-size: 14px; font-weight: 900; box-shadow: 0 4px 15px rgba(0, 243, 255, 0.4); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; text-transform: uppercase; letter-spacing: 1px;"
+              onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0, 243, 255, 0.6)';" 
+              onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0, 243, 255, 0.4)';"
+            >
+              🚀 Zu den Updates
+            </button>
+          ` : html`
+            <div style="background: rgba(76, 175, 80, 0.1); color: #4caf50; padding: 8px 16px; border-radius: 6px; border: 1px solid rgba(76, 175, 80, 0.3); font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+               <div style="width: 8px; height: 8px; background: #4caf50; border-radius: 50%; box-shadow: 0 0 8px #4caf50;"></div>
+               Aktuell
+            </div>
+          `}
+        </div>
+      </div>
+    </div>
+
+    <div class="card" >
+      <h2>ℹ️ Informationen & Ersteinrichtung</h2>
+      <p>Willkommen beim <strong>CYD Solar Display</strong> Panel.</p>
         
         <div class="tech-box">
           <h3 style="margin-top:0; color:#F7931A;">☀️ Was ist das CYD Solar Display?</h3>

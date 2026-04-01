@@ -58,12 +58,58 @@ CONF_MINING3_ENTITY = "mining3_entity"
 CONF_MINING4_NAME = "mining4_name"
 CONF_MINING4_ENTITY = "mining4_entity"
 
+# Page 6 (Custom Sensors Vol 3)
+CONF_ENABLE_PAGE6 = "enable_page6"
+CONF_CUSTOM9_NAME = "custom9_name"
+CONF_CUSTOM9_ENTITY = "custom9_entity"
+CONF_CUSTOM10_NAME = "custom10_name"
+CONF_CUSTOM10_ENTITY = "custom10_entity"
+CONF_CUSTOM11_NAME = "custom11_name"
+CONF_CUSTOM11_ENTITY = "custom11_entity"
+CONF_CUSTOM12_NAME = "custom12_name"
+CONF_CUSTOM12_ENTITY = "custom12_entity"
+
+# Page 7 (Custom Sensors Vol 4)
+CONF_ENABLE_PAGE7 = "enable_page7"
+CONF_CUSTOM13_NAME = "custom13_name"
+CONF_CUSTOM13_ENTITY = "custom13_entity"
+CONF_CUSTOM14_NAME = "custom14_name"
+CONF_CUSTOM14_ENTITY = "custom14_entity"
+CONF_CUSTOM15_NAME = "custom15_name"
+CONF_CUSTOM15_ENTITY = "custom15_entity"
+CONF_CUSTOM16_NAME = "custom16_name"
+CONF_CUSTOM16_ENTITY = "custom16_entity"
+
+# Page 8 (Custom Sensors Vol 5)
+CONF_ENABLE_PAGE8 = "enable_page8"
+CONF_CUSTOM17_NAME = "custom17_name"
+CONF_CUSTOM17_ENTITY = "custom17_entity"
+CONF_CUSTOM18_NAME = "custom18_name"
+CONF_CUSTOM18_ENTITY = "custom18_entity"
+CONF_CUSTOM19_NAME = "custom19_name"
+CONF_CUSTOM19_ENTITY = "custom19_entity"
+CONF_CUSTOM20_NAME = "custom20_name"
+CONF_CUSTOM20_ENTITY = "custom20_entity"
+
+# Page 9 (Custom Sensors Vol 6)
+CONF_ENABLE_PAGE9 = "enable_page9"
+CONF_CUSTOM21_NAME = "custom21_name"
+CONF_CUSTOM21_ENTITY = "custom21_entity"
+CONF_CUSTOM22_NAME = "custom22_name"
+CONF_CUSTOM22_ENTITY = "custom22_entity"
+CONF_CUSTOM23_NAME = "custom23_name"
+CONF_CUSTOM23_ENTITY = "custom23_entity"
+CONF_CUSTOM24_NAME = "custom24_name"
+CONF_CUSTOM24_ENTITY = "custom24_entity"
+
 # Meta
 CONF_SHOW_KW = "show_kw"
 CONF_AUTO_PAGE_SWITCH = "auto_page_switch"
 CONF_PAGE_INTERVAL = "page_interval"
 CONF_PAGE_SWITCH_MODE = "page_switch_mode"   # "auto" | "touch" | "both"
+CONF_PAGE_ROTATION_SOURCE = "page_rotation_source" # "ha" | "display"
 CONF_THEME_COLOR = "theme_color"
+CONF_BROADCAST_MODE = "broadcast_mode"
 
 PAGE_SWITCH_AUTO  = "auto"
 PAGE_SWITCH_TOUCH = "touch"

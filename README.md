@@ -15,13 +15,12 @@
 |--------|-------------|
 | ⚡ **Live Energiefluss** | Solar, Batterie, Haus & Netz in Echtzeit (Seite 1) |
 | 📊 **Ertrags-Statistiken** | Tag, Monat, Jahr & Gesamt PV-Ertrag (Seite 2) |
-| 🔮 **Eigene Sensoren** | 8 frei belegbare HA-Sensoren (Seite 3 & 4) |
-| ⛏️ **Mining Sensoren** | 4 Slots für Hashrate, Temp, Ertrag etc. (Seite 5) |
+| 🔮 **Eigene Sensoren** | **28 frei belegbare** HA-Sensoren (Seite 3 bis 9) |
 | 👆 **Touch-Seitenwechsel** | Irgendwo tippen = nächste Seite |
 | 🔄 **Auto-Seitenwechsel** | HA rotiert Seiten nach konfigurierbarem Intervall |
 | 🔄👆 **Hybridmodus** | Auto + Touch-Override für ~30 Sekunden |
-| 🎛️ **Seiten aktivierbar** | Jede Seite einzeln ein-/ausschaltbar |
-| 🔢 **kW / Watt Modus** | Jederzeit zwischen W und kW umschalten |
+| 🆕 **One-Click Update** | Firmware-Updates direkt im HA-Panel mit einem Klick |
+| 🆕 **Web-Flasher** | Erstinstallation direkt im Browser ohne Zusatzsoftware |
 | 🖥️ **HA Panel** | Interaktives Sidebar-Panel mit 1:1 Live-Preview |
 
 ---
@@ -32,148 +31,70 @@
 |---|-----|---------|
 | 1 | **ESP32 CYD** | Modell **2432S028** (Cheap Yellow Display) |
 | 2 | **Home Assistant** | Version 2023.4.0 oder neuer |
-| 3 | **ESPHome Add-on** | Für die Native API Verbindung |
+| 3 | **Browser** | Chrome oder Edge (für den Web-Flasher) |
 
 > 🛒 Die Hardware gibt es **fertig geflasht (Plug & Play)** bei:  
 > **[solarmodule-gladbeck.de/produkt/ok_display/](https://solarmodule-gladbeck.de/produkt/ok_display/)**
 
-### Hardware-Pinbelegung (CYD 2432S028)
+---
 
-> ⚠️ Das CYD 2432S028 hat **zwei separate SPI-Busse** — einen für das Display und einen für den Touchscreen!
+## ⚡ Erstinstallation (Web-Flasher)
 
-| Komponente | Funktion | GPIO |
-|-----------|---------|------|
-| **Display** (ILI9341) | CLK | 14 |
-| | MOSI | 13 |
-| | MISO | 12 |
-| | CS | 15 |
-| | DC | 2 |
-| **Touchscreen** (XPT2046) | CLK | **25** |
-| | MOSI | **32** |
-| | MISO | **39** |
-| | CS | 33 |
-| | IRQ | 36 |
-| **Backlight** | PWM | 21 |
+Wenn du ein frisches Display hast, kannst du es direkt über den Browser flashen:
+
+1. Öffne den **[CYD Web-Flasher](https://openkairo.github.io/Solar_Display_openkairo/)** (Chrome/Edge erforderlich)
+2. Verbinde den ESP32 per USB mit deinem PC
+3. Klicke auf **Installieren** und wähle den COM-Port aus
+4. Nach dem Flash verbindet sich das Display mit deinem WLAN (Portal öffnet sich)
 
 ---
 
-## 📦 Installation via HACS (Empfohlen)
+## 📦 Integration in Home Assistant (HACS)
 
-HACS ermöglicht einfache Installation **und automatische Updates** bei neuen Versionen.
+HACS ermöglicht die einfache Steuerung des Displays **und automatische Updates**.
 
 ### Schritt 1: Repository hinzufügen
 1. Öffne HACS in Home Assistant
 2. Klicke auf die **3 Punkte** (oben rechts) → **Benutzerdefinierte Repositories**
-3. Füge folgende URL ein:
-   ```
-   https://github.com/openkairo/Solar_Display_openkairo
-   ```
+3. Füge folgende URL ein: `https://github.com/openkairo/Solar_Display_openkairo`
 4. Kategorie: **Integration**
-5. Klicke **Hinzufügen**
 
-### Schritt 2: Integration installieren
-1. Suche in HACS nach **"CYD Solar Display"**
-2. Klicke **Herunterladen**
-3. Starte Home Assistant neu
-
-### 🔄 Updates über HACS erhalten
-Wenn eine neue Version erscheint, zeigt HACS automatisch eine Update-Benachrichtigung an.  
-Einfach auf **Aktualisieren** klicken — fertig!
-
----
-
-## 🔧 Manuelle Installation
-
-1. Lade das Repository als ZIP herunter
-2. Entpacke und kopiere `custom_components/cyd_solar_display` nach:
-   ```
-   /config/custom_components/cyd_solar_display/
-   ```
-3. Starte Home Assistant neu
-
----
-
-## ⚙️ Einrichtung
-
+### Schritt 2: Einrichten
 1. Gehe zu **Einstellungen → Geräte & Dienste → Integration hinzufügen**
-2. Suche nach **CYD Solar Display**
-3. Gib IP-Adresse oder mDNS-Hostname des ESP32 ein (`cyd-solar-display.local`)
-4. Öffne das **CYD Monitor** Sidebar-Panel
-5. Verknüpfe unter **Einstellungen** deine HA-Sensoren
-6. Klicke **Konfiguration Speichern & Anwenden**
+2. Suche nach **CYD Solar Display** und gib die IP des Displays ein
+3. Öffne das neue Sidebar-Panel **CYD Monitor**
+4. Verknüpfe deine Sensoren und klicke auf **Speichern**
 
 ---
 
-## 👆🔄 Seitenwechsel-Modi
+## 🔄 Firmware Updates
 
-Unter **Einstellungen → Allgemeine Eigenschaften** kannst du den Modus wählen:
+Das System prüft automatisch auf neue Versionen.
 
-| Modus | Symbol | Verhalten |
-|-------|--------|-----------|
-| **Automatisch** | 🔄 | HA wechselt Seiten nach dem eingestellten Zeitintervall |
-| **Nur Touch** | 👆 | Nur durch Tippen auf das Display — kein Auto-Wechsel |
-| **Beides** *(empfohlen)* | 🔄👆 | Auto läuft normal, Touch übersteuert für ~30 Sekunden |
-
-### Anzeige im Display-Footer
-- **`[>` gelb** = Touch-Override aktiv (du hast gerade getippt)
-- **`[>` weiß** = HA steuert automatisch
-- **`< >`** blinkt kurz bei jedem Touch auf
-
----
-
-## 📡 Funktionsweise
-
-```
-Home Assistant  ──(ESPHome Native API)──►  ESP32 CYD
-     │                                          │
-     │  push_state() alle 5s                    │  Display-Lambda
-     │  (Solar, Batterie, Netz, ...)            │  rendert Seiten
-     │                                          │
-     │◄─────── Touch Event (Binary Sensor) ─────│
-```
-
-- **Kein MQTT, kein HTTP-Polling** — rein lokale Native API
-- Der ESP32 empfängt Daten aktiv im konfigurierten Intervall
-- Touch-Events werden direkt auf dem ESP32 verarbeitet (kein HA-Roundtrip nötig)
+1. Öffne das **CYD Monitor** Panel in Home Assistant
+2. Wechsel zum Reiter **Hilfe & Info**
+3. Wenn ein Update verfügbar ist, erscheint ganz oben eine blaue Karte
+4. Klicke auf **🚀 JETZT AKTUALISIEREN** — das Display zieht sich das Update vollautomatisch
 
 ---
 
 ## 📋 Changelog
 
+### v1.2.7 — 2026-03-28 🚀 Stabilitäts-Update
+- ✅ **One-Click Firmware Update**: Neue Sektion im Hilfe-Tab
+- ✅ **Web-Flasher Support**: Installation direkt im Browser (index.html/manifest.json)
+- ✅ **28 Custom Sensoren**: Unterstützung für Seiten 1 bis 9 voll ausgebaut
+- ✅ **Performance Boost**: Refactoring der Display-Logik für maximale Stabilität
+- ✅ **Bugfix**: Fehler beim Seiten-Synchronisieren mit HA behoben
+
 ### v1.1.0 — 2026-02-28 🔧 Repository Transfer
 - 🔁 Repository zu [openkairo/Solar_Display_openkairo](https://github.com/openkairo/Solar_Display_openkairo) umgezogen
-- ✅ Code Owner auf @openkairo aktualisiert
-- ✅ Alle internen Links und Badges auf das neue Repository angepasst
-
-### v1.0.0 — 2026-02-28 🎉 Initial Release
-- ✅ Live Energiefluss-Dashboard (Solar, Batterie, Haus, Netz)
-- ✅ Ertrags-Statistiken (Tag, Monat, Jahr, Gesamt)
-- ✅ Eigene Sensoren (Seite 3 & 4, je 4 Slots)
-- ✅ Mining Sensoren (Seite 5, 4 Slots)
-- ✅ **Touch-Seitenwechsel** — überall auf dem Display tippen
-- ✅ **Auto-Seitenwechsel** — konfigurierbares Zeitintervall
-- ✅ **Hybridmodus** — Auto + Touch-Override (~30 Sek.)
-- ✅ Seitenwechsel-Modus wählbar im HA-Panel
-- ✅ Seiten einzeln aktivierbar/deaktivierbar
-- ✅ kW / Watt Umschaltung
-- ✅ Interaktives HA-Sidebar-Panel mit 1:1 Live-Preview
-- ✅ Durchsuchbarer Sensor-Picker (Autocomplete)
-- ✅ Korrekte Dual-SPI-Konfiguration für CYD 2432S028
-- ✅ HACS-kompatibel mit automatischen Updates
 
 ---
 
 ## 🗺️ Roadmap
-
-### 🔧 Kurzfristig
-- [ ] Schwellwert-Benachrichtigungen (z.B. Batterie unter 20%)
 - [ ] Mehrere Display-Instanzen gleichzeitig
-- [ ] Konfiguration Export/Import als JSON
-
-### 💡 Mittelfristig
-- [ ] Weitere Display-Themes (Classic, Minimal)
 - [ ] Wetter & PV-Prognose Seite
-- [ ] Offizielles HACS Default-Store Listing
 
 ---
 
